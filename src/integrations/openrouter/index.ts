@@ -11,16 +11,16 @@ const getUserApiKey = (): string => {
   return import.meta.env.VITE_OPENROUTER_API_KEY || '';
 };
 
-// Initialize OpenRouter client
+// Initialize OpenRouter client (soft failure if no key)
 const createOpenRouterClient = () => {
   const API_KEY = getUserApiKey();
 
   if (!API_KEY) {
-    console.warn('Warning: No OpenRouter API key found. Add one via settings or VITE_OPENROUTER_API_KEY environment variable.');
+    console.warn('Warning: No OpenRouter API key found. Add one via settings (top-left key icon) or VITE_OPENROUTER_API_KEY environment variable.');
   }
 
   return new OpenAI({
-    apiKey: API_KEY,
+    apiKey: API_KEY || 'dummy-key-for-initialization', // Allow client creation
     baseURL: 'https://openrouter.ai/api/v1',
     dangerouslyAllowBrowser: true // Required for client-side use
   });
@@ -31,6 +31,11 @@ let openrouterClient = createOpenRouterClient();
 // Function to refresh client with new API key
 export const refreshOpenRouterClient = () => {
   openrouterClient = createOpenRouterClient();
+};
+
+// Helper function to check if API key is available
+export const hasApiKey = (): boolean => {
+  return !!getUserApiKey();
 };
 
 export interface OpenRouterResponse {
@@ -47,6 +52,18 @@ export async function processVoiceQuery(
   language: 'en' | 'hi'
 ): Promise<OpenRouterResponse> {
   try {
+    // Check if API key is available
+    if (!hasApiKey()) {
+      const noKeyMessage = language === 'en'
+        ? "🔑 API key required! Please click the key icon (top-left) to add your OpenRouter API key, or set VITE_OPENROUTER_API_KEY environment variable."
+        : "🔑 API की आवश्यकता है! कृपया अपना OpenRouter API कुंजी जोड़ने के लिए ऊपर बाईं ओर कुंजी आइकन पर क्लिक करें।";
+
+      return {
+        text: noKeyMessage,
+        error: 'No API key provided',
+        audioResponse: noKeyMessage
+      };
+    }
     const languageInstruction = language === 'en'
       ? "Respond in English."
       : "हिंदी में जवाब दें।";

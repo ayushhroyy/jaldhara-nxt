@@ -5,15 +5,14 @@ export class VisionAI {
   private apiKey: string;
 
   constructor(apiKey: string) {
+    // Allow initialization without API key - will handle missing key gracefully
     if (!apiKey) {
-      throw new Error("OpenRouter API key is required");
+      console.warn('Vision AI initialized without API key. Image analysis will not work until key is provided.');
+      this.apiKey = '';
+    } else {
+      console.log('Vision AI initialized with API key');
+      this.apiKey = apiKey;
     }
-    console.log(
-      "Initializing Vision AI with API key:",
-      apiKey ? "Present" : "Missing",
-    );
-    this.apiKey = apiKey;
-    console.log("Vision AI model initialized: mistralai/ministral-14b-2512");
   }
 
   async analyzeImage(imageFile: File): Promise<ImageAnalysisResult> {
@@ -112,4 +111,13 @@ Generate a concise report (2-3 paragraphs) about the water management implicatio
   }
 }
 
-export const visionAI = new VisionAI(import.meta.env.VITE_OPENROUTER_API_KEY || "");
+// Initialize with API key from environment or localStorage
+const getVisionApiKey = (): string => {
+  if (typeof window !== 'undefined') {
+    const userKey = localStorage.getItem('openrouter_api_key');
+    if (userKey) return userKey;
+  }
+  return import.meta.env.VITE_OPENROUTER_API_KEY || '';
+};
+
+export const visionAI = new VisionAI(getVisionApiKey());
