@@ -3,11 +3,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Header from "@/components/Header";
+import ApiKeySettings from "@/components/ApiKeySettings";
 import NotFound from "./pages/NotFound";
 import { TranslationProvider } from "./contexts/TranslationContext";
 import { AppProvider } from "./contexts/AppContext";
+import { refreshOpenRouterClient } from "@/integrations/openrouter";
 import {
   IndexPage,
   ReportsPage,
@@ -48,6 +50,14 @@ const App = () => {
     localStorage.setItem("preferredLanguage", language);
   }, [language]);
 
+  // Handle API key changes - refresh OpenRouter client
+  const handleApiKeyChange = useCallback((apiKey: string) => {
+    if (apiKey) {
+      refreshOpenRouterClient();
+      console.log('OpenRouter API key updated');
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -57,6 +67,7 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <div className="min-h-screen flex flex-col">
+                <ApiKeySettings onApiKeyChange={handleApiKeyChange} />
                 <Header
                   currentLanguage={language}
                   onLanguageChange={setLanguage}

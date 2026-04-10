@@ -1,17 +1,37 @@
 import OpenAI from 'openai';
 
+// Get API key from multiple sources (priority: user-provided > env var > empty)
+const getUserApiKey = (): string => {
+  // Check localStorage for user-provided key
+  if (typeof window !== 'undefined') {
+    const userKey = localStorage.getItem('openrouter_api_key');
+    if (userKey) return userKey;
+  }
+  // Fall back to environment variable
+  return import.meta.env.VITE_OPENROUTER_API_KEY || '';
+};
+
 // Initialize OpenRouter client
-const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
+const createOpenRouterClient = () => {
+  const API_KEY = getUserApiKey();
 
-if (!API_KEY) {
-  console.warn('Warning: VITE_OPENROUTER_API_KEY is not set');
-}
+  if (!API_KEY) {
+    console.warn('Warning: No OpenRouter API key found. Add one via settings or VITE_OPENROUTER_API_KEY environment variable.');
+  }
 
-const openrouterClient = new OpenAI({
-  apiKey: API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
-  dangerouslyAllowBrowser: true // Required for client-side use
-});
+  return new OpenAI({
+    apiKey: API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+    dangerouslyAllowBrowser: true // Required for client-side use
+  });
+};
+
+let openrouterClient = createOpenRouterClient();
+
+// Function to refresh client with new API key
+export const refreshOpenRouterClient = () => {
+  openrouterClient = createOpenRouterClient();
+};
 
 export interface OpenRouterResponse {
   text: string;
@@ -363,6 +383,9 @@ export async function analyzeImage(
   formData: any;
 }> {
   try {
+    // Refresh client to get latest API key
+    const client = createOpenRouterClient();
+
     const prompt = `Analyze this image and determine if it shows farming or agricultural activities, and/or sun/solar content.
 
 Respond with ONLY this JSON format:
@@ -370,7 +393,7 @@ Respond with ONLY this JSON format:
 
 Be conservative - only mark as farm/sun related if you're confident (0.7+). For formData, only include values you can clearly see.`;
 
-    const response = await openrouterClient.chat.completions.create({
+    const response = await client.chat.completions.create({
       model: "mistralai/ministral-14b-2512",
       messages: [
         {
